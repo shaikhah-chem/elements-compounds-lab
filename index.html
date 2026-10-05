@@ -255,6 +255,28 @@ label.lbl{font-weight:700;display:block;margin-bottom:4px}
 #elcard .el-card{grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:6px 16px}
 #elcard .el-card .big{grid-row:auto;width:56px;height:56px;font-size:24px;border-radius:12px}
 @media (max-width:720px){#elcard .el-card{grid-template-columns:auto 1fr 1fr}}
+/* quiz: group competition */
+.ql{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--violet-soft);color:var(--violet);flex:none}
+.qopts,.qshow{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.gnames{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px}
+.gnames input{padding:8px 10px;font-size:15px}
+.qboard{display:flex;flex-wrap:wrap;gap:8px}
+.gchip{display:flex;gap:8px;align-items:center;padding:6px 14px;border-radius:99px;background:var(--surface-solid);border:1px solid var(--line);font-weight:700;transition:all .4s}
+.gchip b{color:var(--gold);font-size:18px}
+.gchip.up{background:var(--good-soft);border-color:var(--good);transform:scale(1.06)}
+.ggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px}
+.gcard{border:2px solid var(--line);border-radius:14px;padding:10px;background:var(--surface-solid);display:flex;flex-direction:column;gap:8px;align-items:center;transition:all .3s}
+.gcard .glet{display:flex;gap:6px}
+.gcard .glet button{width:42px;height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;font-size:18px}
+.gcard .glet button.on{background:var(--violet);color:#fff;border-color:var(--violet)}
+.gcard .gres{font-weight:700;min-height:1.4em}
+.gcard.ok{border-color:var(--good);background:var(--good-soft)}
+.gcard.no{border-color:var(--bad);background:var(--bad-soft)}
+.gcard.none{opacity:.6}
+.lboard{width:min(620px,100%);display:flex;flex-direction:column;gap:8px}
+.lrow{display:grid;grid-template-columns:44px 1fr auto 60px;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--surface-solid);border:1px solid var(--line);font-size:19px;text-align:start}
+.lrow.win{border:2px solid var(--gold);background:var(--gold-soft);font-size:21px}
+.lrow .lr{font-weight:700;text-align:center}.lrow .lh{color:var(--muted);font-size:15px}.lrow .lp{color:var(--gold);font-size:24px;text-align:center}
 /* Bio cell */
 .cell-svg{width:100%;max-width:520px;display:block;margin:auto}
 .cell-svg text{font-family:var(--f-formula);font-weight:700}
@@ -1886,42 +1908,131 @@ const QUIZ=[
    fb:'الصفوف الأفقية هي <b>الدورات</b>، والأعمدة هي المجموعات أو العائلات.'}];
 function quizMode(){
   document.body.classList.add('model-only');document.title='التقويم الختامي · مختبر العناصر والمركبات';
-  const box=$('#modelOnly');box.style.maxWidth='980px';
-  const L=['أ','ب','ج','د'];let i=0,score=0;const res=[];
-  const r=rec();
+  const box=$('#modelOnly');box.style.maxWidth='1080px';
+  const L=['أ','ب','ج','د'];
+  const fmt=(t,f)=>f?`<span class="f" style="font-size:1.15em">${F(t)}</span>`:t;
+  const DEF_NAMES=['الأكسجين','الهيدروجين','الصوديوم','الكلور','النحاس','الذهب','الحديد','الكربون'];
+  let names=DEF_NAMES.slice(0,5);
+  try{const s=JSON.parse(localStorage.getItem('ec-quiz-groups')||'null');if(Array.isArray(s)&&s.length>=2)names=s}catch(e){}
   box.innerHTML=`<div class="stack">
     <div class="row" style="gap:12px"><span class="pill score" style="font-size:16px">تحصيلي كيمياء</span><h2 style="flex:1;font-size:30px">🏆 التقويم الختامي</h2><span class="pill" id="qProg"></span></div>
+    <div id="qBoard" class="qboard" hidden></div>
     <div class="glass stack" id="qBox" style="padding:22px"></div>
     <div class="muted" style="font-size:11px;text-align:left;opacity:.75">تنفيذ المعلمة: أ. شيخه المطيري</div></div>`;
-  const qb=$('#qBox');
-  const fmt=(t,f)=>f?`<span class="f" style="font-size:26px">${F(t)}</span>`:t;
-  function show(){
-    $('#qProg').textContent=`السؤال ${i+1} / ${QUIZ.length}`;
-    const it=QUIZ[i];
-    qb.innerHTML=`<div class="tps" style="justify-content:flex-start">${QUIZ.map((_,k)=>`<span class="${k<i?(res[k]?'on':''):''}" style="${k===i?'border-color:var(--violet);color:var(--violet);font-weight:700':''}${k<i&&!res[k]?';background:var(--bad-soft);color:var(--bad)':''}">${k+1}</span>`).join('')}</div>
-      <div class="lead" style="font-family:var(--f-display);font-size:clamp(22px,2.8vw,30px)">${it.q}</div>
-      <div class="opts qopts" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))">${it.o.map((t,k)=>`<button class="opt" type="button" data-k="${k}" style="display:flex;gap:12px;align-items:center;font-size:21px;min-height:70px"><b style="width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--violet-soft);color:var(--violet);flex:none">${L[k]}</b><span>${fmt(t,it.f)}</span></button>`).join('')}</div>
-      <div class="fb" id="qfb"></div><div class="row" id="qNav"></div>`;
-    $$('.qopts .opt',qb).forEach(b=>b.onclick=()=>{
-      const k=+b.dataset.k,ok=k===it.a;res[i]=ok;if(ok)score++;
-      award('q:'+(i+1),'التقويم الختامي: س'+(i+1),ok,b);
-      $$('.qopts .opt',qb).forEach(x=>{x.disabled=true;if(+x.dataset.k===it.a)x.classList.add('ok')});if(!ok)b.classList.add('no');
-      const f=$('#qfb',qb);f.className='fb show '+(ok?'ok':'no');f.innerHTML=`<b class="tag">${ok?'✔ إجابة صحيحة':'✎ الإجابة الصحيحة: ('+L[it.a]+')'}</b> ${it.fb}`;
-      const nb=h(`<button class="btn primary big" type="button">${i<QUIZ.length-1?'السؤال التالي ◀':'النتيجة 🏆'}</button>`);
-      nb.onclick=()=>{i++;i<QUIZ.length?show():end()};$('#qNav',qb).appendChild(nb);
+  const qb=$('#qBox'),board=$('#qBoard');
+
+  /* ---------- setup ---------- */
+  function setup(){
+    board.hidden=true;$('#qProg').textContent='الاستعداد';
+    qb.innerHTML=`<div class="lead" style="font-family:var(--f-display);font-size:26px">كيف ستُجبن؟</div>
+      <div class="grid2">
+        <div class="glass stack" style="border-color:var(--gold)">
+          <b style="font-size:20px">👥 منافسة المجموعات</b>
+          <span class="muted">تتشاور كل مجموعة وترفع حرف الإجابة، وتسجّلين حرف كل مجموعة، ثم تُكشف الإجابة وتُحسب النقاط.</span>
+          <div class="row"><label class="lbl" for="gN" style="margin:0">عدد المجموعات:</label>
+            <div class="nums" id="gN" style="direction:rtl">${[2,3,4,5,6,7,8].map(n=>`<button type="button" data-n="${n}" class="${n===names.length?'on':''}">${n}</button>`).join('')}</div></div>
+          <div class="gnames" id="gNames"></div>
+          <button class="btn gold big" type="button" id="goGroups">ابدئي المنافسة ◀</button>
+        </div>
+        <div class="glass stack">
+          <b style="font-size:20px">🙋 إجابة الفصل كله</b>
+          <span class="muted">ترفع الطالبات أصابعهن برمز الإجابة، وتضغطين إجابة الأغلبية.</span>
+          <button class="btn primary big" type="button" id="goClass" style="margin-top:auto">ابدئي ◀</button>
+        </div>
+      </div>`;
+    const drawNames=()=>{$('#gNames').innerHTML=names.map((n,k)=>`<input type="text" id="gname${k}" value="${esc(n)}" aria-label="اسم المجموعة ${k+1}">`).join('')};
+    drawNames();
+    $$('#gN button').forEach(b=>b.onclick=()=>{
+      const n=+b.dataset.n;$$('#gN button').forEach(x=>x.classList.toggle('on',x===b));
+      const cur=$$('#gNames input').map(i=>i.value.trim());
+      names=Array.from({length:n},(_,k)=>cur[k]||DEF_NAMES[k]||('مجموعة '+(k+1)));drawNames();
     });
+    $('#goGroups').onclick=()=>{
+      names=$$('#gNames input').map((i,k)=>i.value.trim()||('مجموعة '+(k+1)));
+      try{localStorage.setItem('ec-quiz-groups',JSON.stringify(names))}catch(e){}
+      groupQuiz();
+    };
+    $('#goClass').onclick=classQuiz;
   }
-  function end(){
-    const pct=Math.round(score/QUIZ.length*100);r.quiz={correct:score,total:QUIZ.length};save();
-    $('#qProg').textContent='اكتمل التقويم';
-    qb.innerHTML=`<div class="center stack" style="align-items:center">${ring(pct)}<div class="lead" style="font-family:var(--f-display);font-size:28px">${score} من ${QUIZ.length}</div>
-      <div class="muted" style="font-size:18px">${pct===100?'استدلال ممتاز — أتقنتِ أهداف الدرس.':pct>=75?'أداء قوي. راجعي السؤال الذي أخطأتِ فيه.':'راجعي تعريف العنصر والمركب وتنظيم الجدول الدوري.'}</div>
-      <div class="stack" style="width:100%;gap:6px">${QUIZ.map((it,k)=>`<div class="fb show ${res[k]?'ok':'no'}" style="text-align:start"><b class="tag">${res[k]?'✔':'✎'} س${k+1}:</b> الإجابة الصحيحة (${L[it.a]}) ${fmt(it.o[it.a],it.f)}</div>`).join('')}</div>
-      <button class="btn big" type="button" id="qAgain">↺ إعادة التقويم</button></div>`;
-    $('#qAgain').onclick=()=>{i=0;score=0;res.length=0;QUIZ.forEach((_,k)=>{delete rec().ans['q:'+(k+1)]});save();show()};
+
+  /* ---------- group competition ---------- */
+  function groupQuiz(){
+    let i=0;const pts=names.map(()=>0),hits=names.map(()=>0);
+    const drawBoard=(flash)=>{board.hidden=false;board.innerHTML=names.map((n,k)=>`<div class="gchip ${flash&&flash[k]?'up':''}"><span>${esc(n)}</span><b class="f">${pts[k]}</b></div>`).join('')};
+    drawBoard();
+    function show(){
+      const it=QUIZ[i];$('#qProg').textContent=`السؤال ${i+1} / ${QUIZ.length}`;
+      const pick=names.map(()=>-1);
+      qb.innerHTML=`<div class="lead" style="font-family:var(--f-display);font-size:clamp(22px,2.8vw,30px)">${it.q}</div>
+        <div class="opts qshow">${it.o.map((t,k)=>`<div class="opt" data-k="${k}" style="display:flex;gap:12px;align-items:center;font-size:20px;min-height:62px;cursor:default"><b class="ql">${L[k]}</b><span>${fmt(t,it.f)}</span></div>`).join('')}</div>
+        <div class="muted" style="font-weight:700">سجّلي حرف كل مجموعة:</div>
+        <div class="ggrid">${names.map((n,g)=>`<div class="gcard" data-g="${g}"><b>${esc(n)}</b><div class="glet">${L.map((l,k)=>`<button type="button" data-k="${k}">${l}</button>`).join('')}</div><span class="gres"></span></div>`).join('')}</div>
+        <div class="fb" id="qfb"></div>
+        <div class="row" id="qNav"><button class="btn primary big" type="button" id="reveal">اكشفي الإجابة 🔍</button><span class="muted" id="qCount"></span></div>`;
+      const count=()=>{$('#qCount').textContent=`سجّلت ${pick.filter(x=>x>=0).length} من ${names.length} مجموعات`};count();
+      $$('.gcard',qb).forEach(c=>{const g=+c.dataset.g;$$('.glet button',c).forEach(b=>b.onclick=()=>{
+        if(c.classList.contains('done'))return;pick[g]=+b.dataset.k;$$('.glet button',c).forEach(x=>x.classList.toggle('on',x===b));count()})});
+      $('#reveal').onclick=()=>{
+        const flash=names.map(()=>false);
+        $$('.qshow .opt',qb).forEach(o=>{if(+o.dataset.k===it.a)o.classList.add('ok')});
+        $$('.gcard',qb).forEach(c=>{const g=+c.dataset.g;c.classList.add('done');const ok=pick[g]===it.a;
+          c.classList.add(pick[g]<0?'none':ok?'ok':'no');
+          $('.gres',c).textContent=pick[g]<0?'لم تُجب':ok?'✔ +10':'✎ 0';
+          if(ok){pts[g]+=10;hits[g]++;flash[g]=true}});
+        drawBoard(flash);
+        const right=names.filter((_,g)=>pick[g]===it.a);
+        const f=$('#qfb',qb);f.className='fb show info';
+        f.innerHTML=`<b class="tag">الإجابة الصحيحة (${L[it.a]})</b> ${it.fb}<br><span style="font-weight:700">${right.length?('أصابت: '+right.map(esc).join('، ')):'لم تُصب أي مجموعة — لنراجع معًا.'}</span>`;
+        $('#qNav',qb).innerHTML='';
+        const nb=h(`<button class="btn primary big" type="button">${i<QUIZ.length-1?'السؤال التالي ◀':'لوحة الترتيب 🏆'}</button>`);
+        nb.onclick=()=>{i++;i<QUIZ.length?show():end()};$('#qNav',qb).appendChild(nb);
+      };
+    }
+    function end(){
+      $('#qProg').textContent='اكتملت المنافسة';
+      const order=names.map((n,g)=>({n,g,p:pts[g],h:hits[g]})).sort((a,b)=>b.p-a.p);
+      const top=order[0].p;const avg=Math.round(hits.reduce((a,b)=>a+b,0)/(names.length*QUIZ.length)*100);
+      const r=rec();r.quizGroups={names:names.slice(),pts:pts.slice(),at:Date.now()};save();
+      let rank=0,prev=-1;
+      qb.innerHTML=`<div class="center stack" style="align-items:center">
+        <div style="font-size:56px">🏆</div>
+        <div class="lead" style="font-family:var(--f-display);font-size:28px">${(()=>{const w=order.filter(o=>o.p===top).map(o=>esc(o.n));return top<=0?'لنراجع الأسئلة معًا':w.length===1?'المجموعة الفائزة: '+w[0]:(w.length===names.length?'تعادل جميع المجموعات — أحسنتن!':'فوز مشترك: '+w.join(' و'))})()}</div>
+        <div class="lboard">${order.map(o=>{if(o.p!==prev){rank++;prev=o.p}return `<div class="lrow ${o.p===top&&top>0?'win':''}"><span class="lr">${o.p===top&&top>0?'👑':rank}</span><span class="ln">${esc(o.n)}</span><span class="lh">${o.h} من ${QUIZ.length}</span><b class="f lp">${o.p}</b></div>`}).join('')}</div>
+        <div class="muted" style="font-size:17px">متوسط إجابات الفصل الصحيحة: <b>${avg}%</b></div>
+        <div class="row" style="justify-content:center"><button class="btn big" type="button" id="qAgain">↺ منافسة جديدة</button></div></div>`;
+      board.hidden=true;$('#qAgain').onclick=setup;
+    }
+    show();
   }
-  show();
+
+  /* ---------- whole class ---------- */
+  function classQuiz(){
+    board.hidden=true;let i=0,score=0;const res=[];
+    function show(){
+      $('#qProg').textContent=`السؤال ${i+1} / ${QUIZ.length}`;const it=QUIZ[i];
+      qb.innerHTML=`<div class="lead" style="font-family:var(--f-display);font-size:clamp(22px,2.8vw,30px)">${it.q}</div>
+        <div class="opts qopts">${it.o.map((t,k)=>`<button class="opt" type="button" data-k="${k}" style="display:flex;gap:12px;align-items:center;font-size:21px;min-height:70px"><b class="ql">${L[k]}</b><span>${fmt(t,it.f)}</span></button>`).join('')}</div>
+        <div class="fb" id="qfb"></div><div class="row" id="qNav"></div>`;
+      $$('.qopts .opt',qb).forEach(b=>b.onclick=()=>{
+        const k=+b.dataset.k,ok=k===it.a;res[i]=ok;if(ok)score++;
+        $$('.qopts .opt',qb).forEach(x=>{x.disabled=true;if(+x.dataset.k===it.a)x.classList.add('ok')});if(!ok)b.classList.add('no');
+        const f=$('#qfb',qb);f.className='fb show '+(ok?'ok':'no');f.innerHTML=`<b class="tag">${ok?'✔ إجابة صحيحة':'✎ الإجابة الصحيحة: ('+L[it.a]+')'}</b> ${it.fb}`;
+        const nb=h(`<button class="btn primary big" type="button">${i<QUIZ.length-1?'السؤال التالي ◀':'النتيجة 🏆'}</button>`);
+        nb.onclick=()=>{i++;i<QUIZ.length?show():end()};$('#qNav',qb).appendChild(nb);
+      });
+    }
+    function end(){
+      const pct=Math.round(score/QUIZ.length*100);$('#qProg').textContent='اكتمل التقويم';
+      qb.innerHTML=`<div class="center stack" style="align-items:center">${ring(pct)}<div class="lead" style="font-family:var(--f-display);font-size:28px">${score} من ${QUIZ.length}</div>
+        <div class="stack" style="width:100%;gap:6px">${QUIZ.map((it,k)=>`<div class="fb show ${res[k]?'ok':'no'}" style="text-align:start"><b class="tag">${res[k]?'✔':'✎'} س${k+1}:</b> الإجابة الصحيحة (${L[it.a]}) ${fmt(it.o[it.a],it.f)}</div>`).join('')}</div>
+        <button class="btn big" type="button" id="qAgain">↺ العودة للبداية</button></div>`;
+      $('#qAgain').onclick=setup;
+    }
+    show();
+  }
+  setup();
 }
+
 /* hub: one card per standalone activity */
 function hubMode(){
   document.body.classList.add('model-only');const box=$('#modelOnly');box.style.maxWidth='1100px';
